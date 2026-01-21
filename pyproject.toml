@@ -1,0 +1,13 @@
+[project]
+name = "anchain_data_mcp"
+version = "0.1.0"
+description = "mcp server for AnChain data api"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp>=2.10.6",
+    "requests>=2.32.4",
+]
+
+[project.scripts]
+anchain_data = "mcp_server:main"
