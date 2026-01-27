@@ -80,11 +80,8 @@ Replace `/path/to/anchain-data-mcp` with the actual path to your project folder 
 
 ### Configure Cursor
 
-Add the following to your Cursor MCP settings file:
+Add the following to your Cursor MCP settings file `mcp.json`:
 
-**MacOS**: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
-
-**Windows**: `%APPDATA%/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
 
 ```json
 {
