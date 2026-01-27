@@ -1,6 +1,6 @@
-# AnChain Data MCP
+# AnChain.ai Data API & MCP
 
-A Model Context Protocol (MCP) server for the AnChain.AI Data API - a comprehensive blockchain intelligence platform powered by AI/ML that enables developers, investigators, and compliance officers to manage risk and ensure regulatory compliance in Web3 applications.
+Model Context Protocol (MCP) server for the AnChain.AI Data API - a comprehensive blockchain intelligence platform powered by AI/ML that enables developers, investigators, and compliance officers to manage risk and ensure regulatory compliance in Web3 applications.
 
 ## Features
 
