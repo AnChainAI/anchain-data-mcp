@@ -47,7 +47,7 @@ def screen_ip_address(ip_address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/intel/ip/geo",
         params={"ip_address": ip_address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -65,7 +65,7 @@ def get_address_label(proto: str, address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/intel/address/label",
         params={"proto": proto, "address": address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -83,7 +83,7 @@ def get_address_risk_score(proto: str, address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/intel/address/score",
         params={"proto": proto, "address": address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -101,7 +101,7 @@ def bulk_address_label(proto: str, addresses: list[str]) -> dict:
     res = requests.post(
         url=f"{API_BASE_URL}/api/intel/address/label/bulk",
         json={"proto": proto, "address": addresses},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -119,7 +119,7 @@ def bulk_address_risk_score(proto: str, addresses: list[str]) -> dict:
     res = requests.post(
         url=f"{API_BASE_URL}/api/intel/address/score/bulk",
         json={"proto": proto, "address": addresses},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -137,7 +137,7 @@ def get_address_suspicious_activities(proto: str, address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/intel/address/suspicious-activities",
         params={"proto": proto, "address": address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -155,7 +155,7 @@ def get_transaction_detail(proto: str, hash: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/intel/transaction",
         params={"proto": proto, "hash": hash},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -177,7 +177,7 @@ def get_address_stats(proto: str, address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/analytics/address/stats",
         params={"proto": proto, "address": address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -195,7 +195,7 @@ def get_address_attribution(proto: str, address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/analytics/address/attribution",
         params={"proto": proto, "address": address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -222,7 +222,7 @@ def auto_trace_address(proto: str, address: str, direct: str, time_from: int, ti
             "time_from": time_from,
             "time_to": time_to
         },
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -240,7 +240,7 @@ def get_transaction_graph(proto: str, hash: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/analytics/transaction/graph",
         params={"proto": proto, "hash": hash},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -258,7 +258,7 @@ def get_smart_contract_code(proto: str, contract_address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/analytics/contract/code",
         params={"proto": proto, "contract_address": contract_address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -276,7 +276,7 @@ def get_contract_transaction(proto: str, transaction_hash: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/analytics/contract/transaction",
         params={"proto": proto, "transaction_hash": transaction_hash},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -297,7 +297,7 @@ def screen_ofac_address(address: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/sanctions/ofac/address",
         params={"address": address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -343,7 +343,7 @@ def search_ofac(
     res = requests.post(
         url=f"{API_BASE_URL}/api/sanctions/ofac/search",
         json={"filters": filters},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -360,7 +360,7 @@ def fuzzy_search_ofac(q: str) -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/sanctions/ofac/search/fuzzy",
         params={"q": q},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -378,7 +378,7 @@ def screen_global_sanctions_address(address: str, dataset: str = "global") -> di
     res = requests.get(
         url=f"{API_BASE_URL}/api/sanctions/global/address",
         params={"dataset": dataset, "address": address},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -429,7 +429,7 @@ def search_global_sanctions(
     res = requests.post(
         url=f"{API_BASE_URL}/api/sanctions/global/search",
         json={"dataset": dataset, "filters": filters},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -447,7 +447,7 @@ def fuzzy_search_global_sanctions(q: str, dataset: str = "global") -> dict:
     res = requests.get(
         url=f"{API_BASE_URL}/api/sanctions/global/search/fuzzy",
         params={"dataset": dataset, "q": q},
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
@@ -473,7 +473,7 @@ def get_crypto_news(query: Optional[str] = None, category: Optional[str] = None)
     res = requests.get(
         url=f"{API_BASE_URL}/api/insights/feeds/news",
         params=params,
-        headers={"X-API-KEY": apikey}
+        headers={"x-api-key": apikey}
     )
     return res.json()
 
