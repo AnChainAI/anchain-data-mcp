@@ -22,13 +22,54 @@ import argparse
 from typing import Literal, Optional
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_headers
-from fastmcp.exceptions import FastMCPError, ValidationError, NotFoundError
+from fastmcp.exceptions import ToolError
 
 # Create an MCP server
 mcp = FastMCP("AnChain.AI")
 API_BASE_URL = "https://api.anchainai.com"
 anchain_apikey = None
 remote = False
+
+
+# ---------------------------------------------------------------------------
+# HTTP helper: uniform timeout + error handling for every AnChain API call.
+# Without a timeout a slow or dead upstream can hang the stdio server forever;
+# without status/JSON checks a non-2xx or non-JSON response surfaces to the
+# client as a masked internal error (FastMCP hides non-ToolError exceptions),
+# so the model never learns it was a bad key, rate limit, or bad address.
+# ---------------------------------------------------------------------------
+DEFAULT_TIMEOUT = (5, 60)     # (connect, read) seconds
+LONG_TIMEOUT = (5, 300)       # long-running endpoints (e.g. auto_trace_address)
+
+
+def _request(method: str, *, timeout=DEFAULT_TIMEOUT, **kwargs) -> dict:
+    """Call the AnChain API and return parsed JSON, raising ToolError with an
+    actionable message on timeout, transport error, non-JSON body, or an error
+    status (either the HTTP code or the JSON envelope's ``status`` field)."""
+    try:
+        res = requests.request(method, timeout=timeout, **kwargs)
+    except requests.exceptions.Timeout:
+        raise ToolError(f"AnChain API request timed out: {kwargs.get('url', '')}")
+    except requests.exceptions.RequestException as exc:
+        raise ToolError(f"AnChain API request failed: {exc}")
+    try:
+        data = res.json()
+    except ValueError:
+        raise ToolError(f"AnChain API returned a non-JSON response (HTTP {res.status_code}): {res.text[:200]}")
+    if not res.ok:
+        err = data.get("err_msg") if isinstance(data, dict) else None
+        raise ToolError(f"AnChain API error (HTTP {res.status_code}): {err or res.text[:200]}")
+    if isinstance(data, dict) and isinstance(data.get("status"), int) and data["status"] >= 400 and data.get("err_msg"):
+        raise ToolError(f"AnChain API error {data['status']}: {data.get('err_msg', '')}")
+    return data
+
+
+def _get(**kwargs) -> dict:
+    return _request("GET", **kwargs)
+
+
+def _post(**kwargs) -> dict:
+    return _request("POST", **kwargs)
 
 # ============================================================================
 # INTELLIGENCE APIs
@@ -44,12 +85,12 @@ def screen_ip_address(ip_address: str) -> dict:
     Cost: 5 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/intel/ip/geo",
         params={"ip_address": ip_address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_address_label(proto: str, address: str) -> dict:
@@ -62,12 +103,12 @@ def get_address_label(proto: str, address: str) -> dict:
     Cost: 5 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/intel/address/label",
         params={"proto": proto, "address": address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_address_risk_score(proto: str, address: str) -> dict:
@@ -80,12 +121,12 @@ def get_address_risk_score(proto: str, address: str) -> dict:
     Cost: 10 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/intel/address/score",
         params={"proto": proto, "address": address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def bulk_address_label(proto: str, addresses: list[str]) -> dict:
@@ -98,12 +139,12 @@ def bulk_address_label(proto: str, addresses: list[str]) -> dict:
     Cost: 50 credits
     """
     apikey = check_apikey()
-    res = requests.post(
+    res = _post(
         url=f"{API_BASE_URL}/api/intel/address/label/bulk",
         json={"proto": proto, "address": addresses},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def bulk_address_risk_score(proto: str, addresses: list[str]) -> dict:
@@ -116,12 +157,12 @@ def bulk_address_risk_score(proto: str, addresses: list[str]) -> dict:
     Cost: 100 credits
     """
     apikey = check_apikey()
-    res = requests.post(
+    res = _post(
         url=f"{API_BASE_URL}/api/intel/address/score/bulk",
         json={"proto": proto, "address": addresses},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_address_suspicious_activities(proto: str, address: str) -> dict:
@@ -134,30 +175,30 @@ def get_address_suspicious_activities(proto: str, address: str) -> dict:
     Cost: 50 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/intel/address/suspicious-activities",
         params={"proto": proto, "address": address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_transaction_detail(proto: str, hash: str) -> dict:
     """Retrieve detailed on-chain information for a specific blockchain transaction.
     
     Args:
-        proto: Blockchain protocol (btc, eth, xrp, hash)
+        proto: Blockchain protocol (btc, eth, xrp)
         hash: Transaction hash (e.g. 0xfd04466bb91ec4270172acffe187eea57145a906de9b488a0f410ade1569760e)
     
     Cost: 50 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/intel/transaction",
         params={"proto": proto, "hash": hash},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 # ============================================================================
 # ANALYTICS APIs
@@ -174,12 +215,12 @@ def get_address_stats(proto: str, address: str) -> dict:
     Cost: 100 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/analytics/address/stats",
         params={"proto": proto, "address": address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_address_attribution(proto: str, address: str) -> dict:
@@ -192,12 +233,12 @@ def get_address_attribution(proto: str, address: str) -> dict:
     Cost: 200 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/analytics/address/attribution",
         params={"proto": proto, "address": address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def auto_trace_address(proto: str, address: str, direct: str, time_from: int, time_to: int) -> dict:
@@ -213,8 +254,9 @@ def auto_trace_address(proto: str, address: str, direct: str, time_from: int, ti
     Cost: 200 credits
     """
     apikey = check_apikey()
-    res = requests.post(
+    res = _post(
         url=f"{API_BASE_URL}/api/analytics/auto_trace",
+        timeout=LONG_TIMEOUT,
         json={
             "proto": proto,
             "address": address,
@@ -224,7 +266,7 @@ def auto_trace_address(proto: str, address: str, direct: str, time_from: int, ti
         },
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_transaction_graph(proto: str, hash: str) -> dict:
@@ -237,12 +279,12 @@ def get_transaction_graph(proto: str, hash: str) -> dict:
     Cost: 100 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/analytics/transaction/graph",
         params={"proto": proto, "hash": hash},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_smart_contract_code(proto: str, contract_address: str) -> dict:
@@ -255,12 +297,12 @@ def get_smart_contract_code(proto: str, contract_address: str) -> dict:
     Cost: 300 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/analytics/contract/code",
         params={"proto": proto, "contract_address": contract_address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def get_contract_transaction(proto: str, transaction_hash: str) -> dict:
@@ -273,12 +315,12 @@ def get_contract_transaction(proto: str, transaction_hash: str) -> dict:
     Cost: 300 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/analytics/contract/transaction",
         params={"proto": proto, "transaction_hash": transaction_hash},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 # ============================================================================
 # SANCTIONS APIs
@@ -294,12 +336,12 @@ def screen_ofac_address(address: str) -> dict:
     Cost: 5 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/sanctions/ofac/address",
         params={"address": address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def search_ofac(
@@ -340,12 +382,12 @@ def search_ofac(
     if state: filters["state"] = state
     if country: filters["country"] = country
     
-    res = requests.post(
+    res = _post(
         url=f"{API_BASE_URL}/api/sanctions/ofac/search",
         json={"filters": filters},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def fuzzy_search_ofac(q: str) -> dict:
@@ -357,12 +399,12 @@ def fuzzy_search_ofac(q: str) -> dict:
     Cost: 100 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/sanctions/ofac/search/fuzzy",
         params={"q": q},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def screen_global_sanctions_address(address: str, dataset: str = "global") -> dict:
@@ -375,12 +417,12 @@ def screen_global_sanctions_address(address: str, dataset: str = "global") -> di
     Cost: 10 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/sanctions/global/address",
         params={"dataset": dataset, "address": address},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def search_global_sanctions(
@@ -426,12 +468,12 @@ def search_global_sanctions(
     if jurisdiction: filters["jurisdiction"] = jurisdiction
     if wallet: filters["wallet"] = wallet
     
-    res = requests.post(
+    res = _post(
         url=f"{API_BASE_URL}/api/sanctions/global/search",
         json={"dataset": dataset, "filters": filters},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 @mcp.tool()
 def fuzzy_search_global_sanctions(q: str, dataset: str = "global") -> dict:
@@ -444,12 +486,12 @@ def fuzzy_search_global_sanctions(q: str, dataset: str = "global") -> dict:
     Cost: 200 credits
     """
     apikey = check_apikey()
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/sanctions/global/search/fuzzy",
         params={"dataset": dataset, "q": q},
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 # ============================================================================
 # INSIGHTS APIs
@@ -470,12 +512,12 @@ def get_crypto_news(query: Optional[str] = None, category: Optional[str] = None)
     if query: params["query"] = query
     if category: params["category"] = category
     
-    res = requests.get(
+    res = _get(
         url=f"{API_BASE_URL}/api/insights/feeds/news",
         params=params,
         headers={"x-api-key": apikey}
     )
-    return res.json()
+    return res
 
 def check_apikey():
     if remote:
@@ -484,7 +526,11 @@ def check_apikey():
         apikey = anchain_apikey
     
     if not apikey:
-            raise ValidationError("no anchain apikey provided")
+        raise ToolError(
+            "No AnChain API key provided. In stdio mode set the ANCHAIN_APIKEY "
+            "environment variable (or pass -k/--ANCHAIN_APIKEY); in remote mode "
+            "send the x-api-key header."
+        )
     return apikey
 
 def main():
