@@ -34,13 +34,24 @@ git clone <repository-url>
 cd anchain-data-mcp
 ```
 
-3. Initialize the project and install dependencies:
+3. Install the project and dependencies:
 ```bash
-uv init
 uv sync
 ```
 
 This will set up the virtual environment and install all required packages from your project configuration.
+
+Check the installed command without making any API requests:
+
+```bash
+uv run anchain_data --help
+```
+
+To run the installation smoke tests (no API key required):
+
+```bash
+uv run python -m unittest discover -s tests -v
+```
 
 ## Configuration
 
