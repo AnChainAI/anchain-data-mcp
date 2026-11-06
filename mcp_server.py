@@ -19,7 +19,8 @@ import os
 import sys
 import requests
 import argparse
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
+from pydantic import Field
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.exceptions import FastMCPError, ValidationError, NotFoundError
@@ -88,7 +89,9 @@ def get_address_risk_score(proto: str, address: str) -> dict:
     return res.json()
 
 @mcp.tool()
-def bulk_address_label(proto: str, addresses: list[str]) -> dict:
+def bulk_address_label(
+    proto: str, addresses: Annotated[list[str], Field(min_length=1, max_length=10)]
+) -> dict:
     """Retrieve address category labels and related entity information for multiple blockchain addresses (up to 10) in a single request.
     
     Args:
@@ -106,7 +109,9 @@ def bulk_address_label(proto: str, addresses: list[str]) -> dict:
     return res.json()
 
 @mcp.tool()
-def bulk_address_risk_score(proto: str, addresses: list[str]) -> dict:
+def bulk_address_risk_score(
+    proto: str, addresses: Annotated[list[str], Field(min_length=1, max_length=10)]
+) -> dict:
     """Retrieve address risk scores, risk levels, and categories for multiple blockchain addresses (up to 10) in one request.
     
     Args:
